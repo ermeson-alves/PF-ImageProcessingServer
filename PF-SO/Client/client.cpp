@@ -26,7 +26,7 @@ int main()
     server_address.sin_port = htons(PORT);
 
     // Converter IP para forma binaria
-    if (inet_pton(AF_INET, "10.100.250.236", &(server_address.sin_addr)) <= 0) {
+    if (inet_pton(AF_INET, "192.168.0.225", &(server_address.sin_addr)) <= 0) {
         perror("Endereço invalido");
         exit(EXIT_FAILURE);
     }

@@ -6,6 +6,12 @@
 #include <arpa/inet.h>
 #include <string.h>
 
+// Opencv imports:
+#include <opencv2/opencv.hpp>
+
+
+
+
 #define PORT 3045
 #define BUFFER_SIZE 1024
 
@@ -119,15 +125,22 @@ void handle_client(int client_socket, char* num_child)
         printf("%ld\n", num_bytes);
     }
 
+
+
     fclose(file);
     printf("Imagem recebida e salva como %s.jpg'\n", num_child);
 
     // Enviar imagem para o cliente
+
     file = fopen(num_child, "rb");
     if (file == NULL) {
         perror("Falha ao abrir imagem");
         exit(EXIT_FAILURE);
     }
+
+    // O processamento via opencv deve ficar aqui:
+    // ...
+
 
     while ((num_bytes = fread(buffer, sizeof(char), BUFFER_SIZE, file)) > 0) {
         send(client_socket, buffer, num_bytes, 0);
