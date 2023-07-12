@@ -5,6 +5,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+// Opencv imports:
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
+
 #define PORT 3045
 #define BUFFER_SIZE 1024
 
@@ -49,32 +53,82 @@ void send_image(int client_socket)
     char buffer[BUFFER_SIZE];
     ssize_t num_bytes;
 
-    // Enviar imagem pro servidor
-    FILE *file = fopen("image.jpg", "rb");
+    // Declara um objeto do tipo "cv2.Mat"
+    cv::Mat image;
+    image = cv::imread("image.jpg", 1);
 
-    if (file == NULL) {
+    if (image.empty()) {
         perror("Falha ao abrir imagem");
         exit(EXIT_FAILURE);
     }
 
-    while ((num_bytes = fread(buffer, sizeof(char), BUFFER_SIZE, file)) > 0) {
-        send(client_socket, buffer, num_bytes, 0);
-    }
+    // ENVIAR imagem pro servidor:
 
-    fclose(file);
+    // Codificação em buffer de bytes:
+    std::vector<uchar> encode_image;
+    cv::imencode(".jpg", image, encode_image);
+    //Enviar tamanho do buffer de bytes para o servidor:
+    size_t image_size = encode_image.size();
+    printf("Tamanho da imagem enviada para o servidor: %ld", image_size);
+    send(client_socket, &image_size, sizeof(size_t), 0);
+
+    // Envie o buffer de bytes para o servidor
+    send(client_socket, encode_image.data(), encode_image.size(), 0);
+
     printf("Imagem enviada para o servidor\n");
+    
 
-    // Receber imagem do servidor
-    file = fopen("received_image.jpg", "wb");
-    if (file == NULL) {
-        perror("Falha ao abrir imagem");
+
+    // FILE *file = fopen("image.jpg", "rb");
+
+    // if (file == NULL) {
+    //     perror("Falha ao abrir imagem");
+    //     exit(EXIT_FAILURE);
+    // }
+
+    // while ((num_bytes = fread(buffer, sizeof(char), BUFFER_SIZE, file)) > 0) {
+    //     send(client_socket, buffer, num_bytes, 0);
+    // }
+
+    // fclose(file);
+    // printf("Imagem enviada para o servidor\n");
+
+
+    // RECEBER imagem do servidor:
+
+    // Receba o tamanho do buffer de bytes
+    size_t image_size2;
+    recv(client_socket, &image_size2, sizeof(size_t), 0);
+
+    // Receba o buffer de bytes contendo a imagem
+    std::vector<uchar> received_image(image_size2);
+    recv(client_socket, received_image.data(), image_size2, 0);
+
+    // Decodifique o buffer de bytes em uma imagem usando OpenCV
+    cv::Mat image_recv = cv::imdecode(received_image, cv::IMREAD_COLOR);
+    if (image_recv.empty()) {
+        perror("Falha ao decodificar imagem");
         exit(EXIT_FAILURE);
     }
 
-    while ((num_bytes = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 0) {
-        fwrite(buffer, sizeof(char), num_bytes, file);
-    }
 
-    fclose(file);
+    // file = fopen("received_image.jpg", "wb");
+    // if (file == NULL) {
+    //     perror("Falha ao abrir imagem");
+    //     exit(EXIT_FAILURE);
+    // }
+
+    // while ((num_bytes = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 0) {
+    //     fwrite(buffer, sizeof(char), num_bytes, file);
+    // }
+
+    // fclose(file);
+
+
+    // SALVAR Imagem recebida:
+
+    cv::imwrite("received_image.jpg", image_recv);
+
+
     printf("Imagem recebida do servidor e salva como 'received_image.jpg'\n");
 }

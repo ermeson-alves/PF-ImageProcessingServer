@@ -8,7 +8,7 @@
 
 // Opencv imports:
 #include <opencv2/opencv.hpp>
-
+#include <opencv2/imgcodecs.hpp>
 
 
 
@@ -113,40 +113,74 @@ void handle_client(int client_socket, char* num_child)
 
     strcat(num_child, ".jpg");
 
-    // Receber imagem do cliente
-    FILE *file = fopen(num_child, "wb");
-    if (file == NULL) {
-        perror("Falha ao abrir imagem");
+    // Receba o tamanho do buffer de bytes
+    size_t image_size;
+    recv(client_socket, &image_size, sizeof(size_t), 0);
+
+    // Receba o buffer de bytes contendo a imagem
+    std::vector<uchar> received_image(image_size);
+    recv(client_socket, received_image.data(), image_size, 0);
+
+    // Decodifique o buffer de bytes em uma imagem usando OpenCV
+    cv::Mat image = cv::imdecode(received_image, cv::IMREAD_COLOR);
+    if (image.empty()) {
+        perror("Falha ao decodificar imagem");
         exit(EXIT_FAILURE);
     }
 
-    while ((num_bytes = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 528) {
-        fwrite(buffer, sizeof(char), num_bytes, file);
-        printf("%ld\n", num_bytes);
-    }
+    // cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE);
+    // cv::imshow("Display Image", image);
+    // cv::waitKey(0);
 
 
+    // // Receber imagem do cliente
+    // FILE *file = fopen(num_child, "wb");
+    // if (file == NULL) {
+    //     perror("Falha ao abrir imagem");
+    //     exit(EXIT_FAILURE);
+    // }
 
-    fclose(file);
+    // while ((num_bytes = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 528) {
+    //     fwrite(buffer, sizeof(char), num_bytes, file);
+    //     printf("%ld\n", num_bytes);
+    // }
+
+    // fclose(file);
+
+
     printf("Imagem recebida e salva como %s.jpg'\n", num_child);
 
     // Enviar imagem para o cliente
 
-    file = fopen(num_child, "rb");
-    if (file == NULL) {
-        perror("Falha ao abrir imagem");
-        exit(EXIT_FAILURE);
-    }
+    // Pré-processamento:
+    //  ...
 
-    // O processamento via opencv deve ficar aqui:
-    // ...
+    // Codificação em buffer de bytes:
+    std::vector<uchar> encode_image;
+    cv::imencode(".jpg", image, encode_image);
+    //Enviar tamanho do buffer de bytes para o servidor:
+
+    size_t image_size2 = encode_image.size();
+    send(client_socket, &image_size2, sizeof(size_t), 0);
+
+    // Envie o buffer de bytes para o servidor
+    send(client_socket, encode_image.data(), encode_image.size(), 0);
 
 
-    while ((num_bytes = fread(buffer, sizeof(char), BUFFER_SIZE, file)) > 0) {
-        send(client_socket, buffer, num_bytes, 0);
-    }
 
-    fclose(file);
+    // file = fopen(num_child, "rb");
+    // if (file == NULL) {
+    //     perror("Falha ao abrir imagem");
+    //     exit(EXIT_FAILURE);
+    // }
+
+    
+    // while ((num_bytes = fread(buffer, sizeof(char), BUFFER_SIZE, file)) > 0) {
+    //     send(client_socket, buffer, num_bytes, 0);
+    // }
+
+    // fclose(file);
+
     printf("Imagem mandada de volta para o client\n");
 
     close(client_socket);
