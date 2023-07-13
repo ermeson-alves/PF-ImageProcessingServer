@@ -8,14 +8,14 @@
 
 // Opencv imports:
 #include <opencv2/opencv.hpp>
-
-
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 
 #define PORT 3045
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 4096
 
-void handle_client(int client_socket, char* num_child);
+void handle_client(int client_socket);
 
 int main()
 {
@@ -37,7 +37,7 @@ int main()
 
     // Vincular socket ao IP e porta
     if (bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
-        perror("Falha ao vincular");
+        perror("Falha ao vincular socket");
         exit(EXIT_FAILURE);
     }
 
@@ -52,40 +52,10 @@ int main()
     while (1) {
         // Aceitar conexão
         if ((client_socket = accept(server_socket, (struct sockaddr *)&client_address, &client_address_length)) < 0) {
-            perror("Falha ao aceitar");
+            perror("Falha ao aceitar conexao");
             exit(EXIT_FAILURE);
         }
-
-        // Obter número de processos filho
-
-        char buffer[BUFFER_SIZE];
-        char word[10];
-
-        FILE* input;
-
-        input = popen("bash_pid=$$", "w");
-        fprintf(input, "children=`ps -eo ppid | grep -w $bash_pid`\n");
-        fprintf(input, "export num_children=`echo $children | wc -w`\n");
-
-        if (input == NULL) {
-            perror("Falha ao executar comando");
-            exit(EXIT_FAILURE);
-        }
-
-        FILE* output;
-
-        output = popen("echo $num_children", "r");
-
-        if (output == NULL) {
-            perror("Falha ao executar comando");
-            exit(EXIT_FAILURE);
-        }
-        else {
-            fgets(word, 10, output);
-        }
-
-        printf("%s/n", word);
-
+    
         // Criar processo filho para atender ao cliente
         pid_t child_pid = fork();
 
@@ -95,7 +65,7 @@ int main()
         } else if (child_pid == 0) {
             // Processo filho
             close(server_socket);
-            handle_client(client_socket, word);
+            handle_client(client_socket);
             exit(EXIT_SUCCESS);
         } else {
             // Processo pai
@@ -106,47 +76,84 @@ int main()
     return 0;
 }
 
-void handle_client(int client_socket, char* num_child)
+void handle_client(int client_socket)
 {
     char buffer[BUFFER_SIZE];
     ssize_t num_bytes;
 
-    strcat(num_child, ".jpg");
+    //RECEBER IMAGEM DO CLIENTE: 
 
-    // Receber imagem do cliente
-    FILE *file = fopen(num_child, "wb");
-    if (file == NULL) {
-        perror("Falha ao abrir imagem");
+    // Receba o tamanho do buffer de bytes
+    size_t image_size;
+    recv(client_socket, &image_size, sizeof(size_t), 0);
+
+    // Receba o buffer de bytes contendo a imagem
+    std::vector<uchar> received_image(image_size);
+    recv(client_socket, received_image.data(), image_size, 0);
+
+    // Decodifique o buffer de bytes em uma imagem usando OpenCV
+    cv::Mat image = cv::imdecode(received_image, cv::IMREAD_COLOR);
+    if (image.empty()) {
+        perror("Falha ao decodificar imagem");
         exit(EXIT_FAILURE);
     }
 
-    while ((num_bytes = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 528) {
-        fwrite(buffer, sizeof(char), num_bytes, file);
-        printf("%ld\n", num_bytes);
-    }
+
+    // ENVIAR IMAGEM PARA O CLIENTE
+
+    // Pré-processamento:
+    // First we declare the variables we are going to use
+    cv::Mat grad, src, src_gray;
+    const std::string window_name = "Resultado: Filtro da média e Filtro Sobel";
+    int ksize = 3;
+    int scale = 0.5;
+    int delta = 1;
+    int ddepth = CV_16S;
+
+    // Remoçao de ruido
+    cv::GaussianBlur(image, src, cv::Size(3,3), 0, 0, cv::BORDER_DEFAULT);
+    // Conversão para escala de cinza
+    cv::cvtColor(src, src_gray, cv::COLOR_BGR2GRAY);
+
+    cv::Mat grad_x, grad_y;
+    cv::Mat abs_grad_x, abs_grad_y;
+    cv::Sobel(src_gray, grad_x, ddepth, 1, 0, ksize);
+    cv::Sobel(src_gray, grad_y, ddepth, 0, 1, ksize);
+
+    // Convertendo de volta para CV_8U
+    cv::convertScaleAbs(grad_x, abs_grad_x);
+    cv::convertScaleAbs(grad_y, abs_grad_y);
+    cv::addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad);
+    // cv::imshow(window_name, grad);
+    // cv::waitKey(0); 
+
+    // Codificação em buffer de bytes:
+    std::vector<uchar> encode_image;
+    cv::imencode(".jpg", grad, encode_image);
+    
+    //Enviar tamanho do buffer de bytes para o servidor:
+
+    size_t image_size2 = encode_image.size();
+    send(client_socket, &image_size2, sizeof(size_t), 0);
+
+    // Envie o buffer de bytes para o servidor
+    send(client_socket, encode_image.data(), encode_image.size(), 0);
 
 
 
-    fclose(file);
-    printf("Imagem recebida e salva como %s.jpg'\n", num_child);
+    // file = fopen(num_child, "rb");
+    // if (file == NULL) {
+    //     perror("Falha ao abrir imagem");
+    //     exit(EXIT_FAILURE);
+    // }
 
-    // Enviar imagem para o cliente
+    
+    // while ((num_bytes = fread(buffer, sizeof(char), BUFFER_SIZE, file)) > 0) {
+    //     send(client_socket, buffer, num_bytes, 0);
+    // }
 
-    file = fopen(num_child, "rb");
-    if (file == NULL) {
-        perror("Falha ao abrir imagem");
-        exit(EXIT_FAILURE);
-    }
+    // fclose(file);
 
-    // O processamento via opencv deve ficar aqui:
-    // ...
-
-
-    while ((num_bytes = fread(buffer, sizeof(char), BUFFER_SIZE, file)) > 0) {
-        send(client_socket, buffer, num_bytes, 0);
-    }
-
-    fclose(file);
     printf("Imagem mandada de volta para o client\n");
 
     close(client_socket);
