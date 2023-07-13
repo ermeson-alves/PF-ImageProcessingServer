@@ -55,7 +55,7 @@ void send_image(int client_socket)
 
     // Declara um objeto do tipo "cv2.Mat"
     cv::Mat image;
-    image = cv::imread("image.jpg", 1);
+    image = cv::imread("image2.jpg", 1);
 
     if (image.empty()) {
         perror("Falha ao abrir imagem");
@@ -63,10 +63,10 @@ void send_image(int client_socket)
     }
 
 
-    // ENVIAR imagem pro servidor:
+    // ENVIAR IMAGEM PARA O SERVIDOR:
 
+    // cv::resize(image, image, cv::Size(480, 320));
 
-    cv::resize(image, image, cv::Size(480, 320));
     // Codificação em buffer de bytes:
     std::vector<uchar> encode_image;
     cv::imencode(".jpg", image, encode_image);
@@ -77,11 +77,8 @@ void send_image(int client_socket)
 
     // Envie o buffer de bytes para o servidor
     send(client_socket, encode_image.data(), encode_image.size(), 0);
-
     printf("Imagem enviada para o servidor\n");
     
-
-
     // FILE *file = fopen("image.jpg", "rb");
 
     // if (file == NULL) {
@@ -97,7 +94,9 @@ void send_image(int client_socket)
     // printf("Imagem enviada para o servidor\n");
 
 
-    // RECEBER imagem do servidor:
+
+
+    // RECEBER IMAGEM DO SERVIDOR:
 
     // Receba o tamanho do buffer de bytes
     size_t image_size2;
@@ -124,11 +123,10 @@ void send_image(int client_socket)
     // while ((num_bytes = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 0) {
     //     fwrite(buffer, sizeof(char), num_bytes, file);
     // }
-
     // fclose(file);
 
 
-    // SALVAR Imagem recebida:
+    // SALVAR IMAGEM RECEBIDA:
 
     cv::imwrite("received_image.jpg", image_recv);
 

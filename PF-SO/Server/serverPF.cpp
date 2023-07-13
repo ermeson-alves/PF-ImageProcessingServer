@@ -9,7 +9,7 @@
 // Opencv imports:
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgcodecs.hpp>
-
+#include <opencv2/imgproc.hpp>
 
 
 #define PORT 3045
@@ -81,6 +81,8 @@ void handle_client(int client_socket)
     char buffer[BUFFER_SIZE];
     ssize_t num_bytes;
 
+    //RECEBER IMAGEM DO CLIENTE: 
+
     // Receba o tamanho do buffer de bytes
     size_t image_size;
     recv(client_socket, &image_size, sizeof(size_t), 0);
@@ -96,39 +98,38 @@ void handle_client(int client_socket)
         exit(EXIT_FAILURE);
     }
 
-    // cv::resize(image, image, cv::Size(1080, 720));
 
-    // cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE);
-    // cv::imshow("Display Image", image);
-    // cv::waitKey(0);
-
-
-    // // Receber imagem do cliente
-    // FILE *file = fopen(num_child, "wb");
-    // if (file == NULL) {
-    //     perror("Falha ao abrir imagem");
-    //     exit(EXIT_FAILURE);
-    // }
-
-    // while ((num_bytes = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 528) {
-    //     fwrite(buffer, sizeof(char), num_bytes, file);
-    //     printf("%ld\n", num_bytes);
-    // }
-
-    // fclose(file);
-
-
-    // printf("Imagem recebida e salva como %s.jpg'\n", num_child);
-
-    // Enviar imagem para o cliente
-
+    // ENVIAR IMAGEM PARA O CLIENTE
 
     // Pré-processamento:
-    //  ...
+    // First we declare the variables we are going to use
+    cv::Mat grad, src, src_gray;
+    const std::string window_name = "Resultado: Filtro da média e Filtro Sobel";
+    int ksize = 3;
+    int scale = 0.5;
+    int delta = 1;
+    int ddepth = CV_16S;
+
+    // Remoçao de ruido
+    cv::GaussianBlur(image, src, cv::Size(3,3), 0, 0, cv::BORDER_DEFAULT);
+    // Conversão para escala de cinza
+    cv::cvtColor(src, src_gray, cv::COLOR_BGR2GRAY);
+
+    cv::Mat grad_x, grad_y;
+    cv::Mat abs_grad_x, abs_grad_y;
+    cv::Sobel(src_gray, grad_x, ddepth, 1, 0, ksize);
+    cv::Sobel(src_gray, grad_y, ddepth, 0, 1, ksize);
+
+    // converting back to CV_8U
+    cv::convertScaleAbs(grad_x, abs_grad_x);
+    cv::convertScaleAbs(grad_y, abs_grad_y);
+    cv::addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad);
+    // cv::imshow(window_name, grad);
+    // cv::waitKey(0); 
 
     // Codificação em buffer de bytes:
     std::vector<uchar> encode_image;
-    cv::imencode(".jpg", image, encode_image);
+    cv::imencode(".jpg", grad, encode_image);
     
     //Enviar tamanho do buffer de bytes para o servidor:
 
