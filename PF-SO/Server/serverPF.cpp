@@ -128,9 +128,15 @@ void handle_client(int client_socket, char* num_child)
         exit(EXIT_FAILURE);
     }
 
-    // cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE);
-    // cv::imshow("Display Image", image);
-    // cv::waitKey(0);
+    cv::Size shape = image.size();
+    int w = shape.width;
+    int h = shape.height;
+
+    cv::resize(image, image, cv::Size(w/2, h/2));
+
+    cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Display Image", image);
+    cv::waitKey(0);
 
 
     // // Receber imagem do cliente

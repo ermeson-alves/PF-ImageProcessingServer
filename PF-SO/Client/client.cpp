@@ -30,7 +30,7 @@ int main()
     server_address.sin_port = htons(PORT);
 
     // Converter IP para forma binaria
-    if (inet_pton(AF_INET, "192.168.0.225", &(server_address.sin_addr)) <= 0) {
+    if (inet_pton(AF_INET, "192.168.1.108", &(server_address.sin_addr)) <= 0) {
         perror("Endereço invalido");
         exit(EXIT_FAILURE);
     }
@@ -62,8 +62,11 @@ void send_image(int client_socket)
         exit(EXIT_FAILURE);
     }
 
+
     // ENVIAR imagem pro servidor:
 
+
+    cv::resize(image, image, cv::Size(1080, 720));
     // Codificação em buffer de bytes:
     std::vector<uchar> encode_image;
     cv::imencode(".jpg", image, encode_image);
