@@ -10,7 +10,7 @@
 #include <opencv2/imgcodecs.hpp>
 
 #define PORT 3045
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 4096
 
 void send_image(int client_socket);
 
@@ -66,7 +66,7 @@ void send_image(int client_socket)
     // ENVIAR imagem pro servidor:
 
 
-    cv::resize(image, image, cv::Size(1080, 720));
+    cv::resize(image, image, cv::Size(480, 320));
     // Codificação em buffer de bytes:
     std::vector<uchar> encode_image;
     cv::imencode(".jpg", image, encode_image);
