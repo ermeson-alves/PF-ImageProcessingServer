@@ -13,9 +13,9 @@
 
 
 #define PORT 3045
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 4096
 
-void handle_client(int client_socket, char* num_child);
+void handle_client(int client_socket);
 
 int main()
 {
@@ -37,7 +37,7 @@ int main()
 
     // Vincular socket ao IP e porta
     if (bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
-        perror("Falha ao vincular");
+        perror("Falha ao vincular socket");
         exit(EXIT_FAILURE);
     }
 
@@ -52,40 +52,10 @@ int main()
     while (1) {
         // Aceitar conexão
         if ((client_socket = accept(server_socket, (struct sockaddr *)&client_address, &client_address_length)) < 0) {
-            perror("Falha ao aceitar");
+            perror("Falha ao aceitar conexao");
             exit(EXIT_FAILURE);
         }
-
-        // Obter número de processos filho
-
-        char buffer[BUFFER_SIZE];
-        char word[10];
-
-        FILE* input;
-
-        input = popen("bash_pid=$$", "w");
-        fprintf(input, "children=`ps -eo ppid | grep -w $bash_pid`\n");
-        fprintf(input, "export num_children=`echo $children | wc -w`\n");
-
-        if (input == NULL) {
-            perror("Falha ao executar comando");
-            exit(EXIT_FAILURE);
-        }
-
-        FILE* output;
-
-        output = popen("echo $num_children", "r");
-
-        if (output == NULL) {
-            perror("Falha ao executar comando");
-            exit(EXIT_FAILURE);
-        }
-        else {
-            fgets(word, 10, output);
-        }
-
-        printf("%s/n", word);
-
+    
         // Criar processo filho para atender ao cliente
         pid_t child_pid = fork();
 
@@ -95,7 +65,7 @@ int main()
         } else if (child_pid == 0) {
             // Processo filho
             close(server_socket);
-            handle_client(client_socket, word);
+            handle_client(client_socket);
             exit(EXIT_SUCCESS);
         } else {
             // Processo pai
@@ -106,12 +76,10 @@ int main()
     return 0;
 }
 
-void handle_client(int client_socket, char* num_child)
+void handle_client(int client_socket)
 {
     char buffer[BUFFER_SIZE];
     ssize_t num_bytes;
-
-    strcat(num_child, ".jpg");
 
     // Receba o tamanho do buffer de bytes
     size_t image_size;
@@ -128,15 +96,11 @@ void handle_client(int client_socket, char* num_child)
         exit(EXIT_FAILURE);
     }
 
-    cv::Size shape = image.size();
-    int w = shape.width;
-    int h = shape.height;
+    // cv::resize(image, image, cv::Size(1080, 720));
 
-    cv::resize(image, image, cv::Size(w/2, h/2));
-
-    cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE);
-    cv::imshow("Display Image", image);
-    cv::waitKey(0);
+    // cv::namedWindow("Display Image", cv::WINDOW_AUTOSIZE);
+    // cv::imshow("Display Image", image);
+    // cv::waitKey(0);
 
 
     // // Receber imagem do cliente
@@ -154,9 +118,10 @@ void handle_client(int client_socket, char* num_child)
     // fclose(file);
 
 
-    printf("Imagem recebida e salva como %s.jpg'\n", num_child);
+    // printf("Imagem recebida e salva como %s.jpg'\n", num_child);
 
     // Enviar imagem para o cliente
+
 
     // Pré-processamento:
     //  ...
@@ -164,6 +129,7 @@ void handle_client(int client_socket, char* num_child)
     // Codificação em buffer de bytes:
     std::vector<uchar> encode_image;
     cv::imencode(".jpg", image, encode_image);
+    
     //Enviar tamanho do buffer de bytes para o servidor:
 
     size_t image_size2 = encode_image.size();
