@@ -72,28 +72,12 @@ void send_image(int client_socket)
     cv::imencode(".jpg", image, encode_image);
     //Enviar tamanho do buffer de bytes para o servidor:
     size_t image_size = encode_image.size();
-    printf("Tamanho da imagem enviada para o servidor: %ld", image_size);
+    printf("Tamanho da imagem enviada para o servidor: %ld\n", image_size);
     send(client_socket, &image_size, sizeof(size_t), 0);
 
     // Envie o buffer de bytes para o servidor
     send(client_socket, encode_image.data(), encode_image.size(), 0);
     printf("Imagem enviada para o servidor\n");
-    
-    // FILE *file = fopen("image.jpg", "rb");
-
-    // if (file == NULL) {
-    //     perror("Falha ao abrir imagem");
-    //     exit(EXIT_FAILURE);
-    // }
-
-    // while ((num_bytes = fread(buffer, sizeof(char), BUFFER_SIZE, file)) > 0) {
-    //     send(client_socket, buffer, num_bytes, 0);
-    // }
-
-    // fclose(file);
-    // printf("Imagem enviada para o servidor\n");
-
-
 
 
     // RECEBER IMAGEM DO SERVIDOR:
@@ -114,16 +98,6 @@ void send_image(int client_socket)
     }
 
 
-    // file = fopen("received_image.jpg", "wb");
-    // if (file == NULL) {
-    //     perror("Falha ao abrir imagem");
-    //     exit(EXIT_FAILURE);
-    // }
-
-    // while ((num_bytes = recv(client_socket, buffer, BUFFER_SIZE, 0)) > 0) {
-    //     fwrite(buffer, sizeof(char), num_bytes, file);
-    // }
-    // fclose(file);
 
 
     // SALVAR IMAGEM RECEBIDA:
